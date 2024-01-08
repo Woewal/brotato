@@ -1,46 +1,101 @@
-import Peer from "peerjs";
+import Peer, { DataConnection } from "peerjs";
 import { createSignal, onCleanup } from "solid-js";
+import EventListener from "./eventListener";
 
-type Command<T> = {
-  from: "client" | "host";
-  key: string;
-  onReceive: (data: T) => void;
+type ClientCommands = {
+	mousePositionDelta: [position: { x: number; y: number }];
+	chat: [message: string];
 };
 
-const commands: Command<any>[] = [];
+type HostCommands = {
+	test: [number];
+	test2: [string, number];
+};
 
 export const createHost = () => {
-  const peer = new Peer(Math.floor(Math.random() * 9999).toString());
+	const peer = new Peer(Math.floor(Math.random() * 9999).toString());
 
-  const [roomId, setRoomId] = createSignal<string>();
+	const [roomId, setRoomId] = createSignal<string>();
 
-  peer.on("open", function (id) {
-    console.log("My peer ID is: " + id);
-    setRoomId(id);
-  });
+	const [connections, setConnections] = createSignal<DataConnection[]>([]);
 
-  peer.on("error", (error) => {
-    alert(error.message);
-  });
+	peer.on("open", function (id) {
+		console.log("My peer ID is: " + id);
+		setRoomId(id);
+	});
 
-  peer.on("connection", (conn) => {
-    console.log(conn.connectionId);
-    conn.on("data", (data) => {
-      console.log(data);
-    });
-  });
+	peer.on("error", (error) => {
+		alert(error.message);
+	});
 
-  onCleanup(() => peer.disconnect());
+	const eventListener = new EventListener<HostCommands & ClientCommands>();
 
-  return { roomId };
+	peer.on("connection", (conn) => {
+		setConnections((connections) => [...connections, conn]);
+
+		conn.on("data", (data) => {
+			if (typeof data != "object") return;
+
+			if (!data["key"] || !eventListener.has(data["key"])) return;
+
+			eventListener.invoke(data["key"], ...data["args"]);
+		});
+	});
+
+	onCleanup(() => peer.disconnect());
+
+	return {
+		roomId,
+		sendAll: <T extends keyof HostCommands>(
+			key: T,
+			...args: HostCommands[T]
+		) => {
+			connections().forEach((connection) => connection.send({ key, args }));
+		},
+		on: <T extends keyof ClientCommands>(
+			key: T,
+			handler: (...args: ClientCommands[T]) => void
+		) => eventListener.on(key, handler),
+		off: <T extends keyof ClientCommands>(
+			key: T,
+			handler: (...args: ClientCommands[T]) => void
+		) => eventListener.off(key, handler),
+	};
 };
 
 export const createClient = (id: string) => {
-  var peer = new Peer();
+	var peer = new Peer();
 
-  peer.on("open", () => {
-    var conn = peer.connect(id);
-  });
+	const eventListener = new EventListener<HostCommands & ClientCommands>();
 
-  onCleanup(() => peer.disconnect());
+	let conn: DataConnection | undefined;
+
+	peer.on("open", () => {
+		conn = peer.connect(id);
+
+		conn.on("data", (data) => {
+			if (typeof data != "object") return;
+
+			if (!data["key"] || !eventListener.has(data["key"])) return;
+
+			eventListener.invoke(data["key"], ...data["args"]);
+		});
+	});
+
+	onCleanup(() => peer.disconnect());
+
+	return {
+		send: <T extends keyof ClientCommands>(
+			key: T,
+			...args: ClientCommands[T]
+		) => conn.send({ key, args }),
+		on: <T extends keyof HostCommands>(
+			key: T,
+			handler: (...args: HostCommands[T]) => void
+		) => eventListener.on(key, handler),
+		off: <T extends keyof HostCommands>(
+			key: T,
+			handler: (...args: HostCommands[T]) => void
+		) => eventListener.off(key, handler),
+	};
 };
