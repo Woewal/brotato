@@ -1,6 +1,6 @@
 import Peer, { DataConnection } from "peerjs";
-import { createSignal, onCleanup } from "solid-js";
 import EventListener from "./eventListener";
+import { ref } from "vue";
 
 type ClientMessages = {
   mousePositionDelta: [position: { x: number; y: number }];
@@ -16,13 +16,13 @@ type HostMessages = {
 export const createHost = () => {
   const peer = new Peer(Math.floor(Math.random() * 9999).toString(), {});
 
-  const [roomId, setRoomId] = createSignal<string>();
+  const roomId = ref<string>("");
 
-  const [connections, setConnections] = createSignal<DataConnection[]>([]);
+  const connections = ref(new Set<DataConnection>());
 
   peer.on("open", function (id) {
     console.log("My peer ID is: " + id);
-    setRoomId(id);
+    roomId.value = id;
   });
 
   peer.on("error", (error) => {
@@ -38,7 +38,7 @@ export const createHost = () => {
   eventListener.on("mousePositionDelta", (id, string) => {});
 
   peer.on("connection", (conn) => {
-    setConnections((connections) => [...connections, conn]);
+    connections.value.add(conn);
 
     eventListener.invoke("connect", conn.connectionId);
 
@@ -55,17 +55,13 @@ export const createHost = () => {
     eventListener.invoke("disconnect", connectedId)
   );
 
-  onCleanup(() => {
-    peer.disconnect();
-  });
-
   return {
     roomId,
     sendAll: <T extends keyof HostMessages>(
       key: T,
       ...args: HostMessages[T]
     ) => {
-      connections().forEach((connection) => connection.send({ key, args }));
+      connections.value.forEach((connection) => connection.send({ key, args }));
     },
     on: <T extends keyof ClientMessages>(
       key: T,
@@ -102,8 +98,6 @@ export const createClient = (id: string) => {
       eventListener.invoke(data["key"], ...data["args"]);
     });
   });
-
-  onCleanup(() => peer.disconnect());
 
   return {
     send: <T extends keyof ClientMessages>(

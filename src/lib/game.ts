@@ -1,13 +1,17 @@
-import Phaser = require("phaser");
-
+import * as Phaser from "phaser";
 class MainScene extends Phaser.Scene {}
 
-const config = {
-  type: Phaser.AUTO,
-  width: 1200,
-  height: 800,
-  parent: "phaser-example",
-  scene: MainScene,
+const useGame = ({ element }: { element: HTMLElement }) => {
+  const config = {
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    parent: element,
+    scene: MainScene,
+  };
+
+  const game = new Phaser.Game(config);
+  return game;
 };
 
-const game = new Phaser.Game(config);
+export default useGame;
