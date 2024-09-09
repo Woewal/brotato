@@ -1,23 +1,11 @@
-<template>
-  <div
-    :style="{
-      position: 'fixed',
-      width: '30px',
-      height: '30px',
-      background: 'hotpink',
-      left: `${position.x}px`,
-      top: `${position.y}px`,
-      transition: '0.2s all ease',
-    }"
-  ></div>
-  );
-</template>
-
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
 import { injectPlayers } from "../context/players";
+import { useGame } from "../context/game";
 
 const playerManager = injectPlayers();
+
+const { scene } = useGame();
 
 const position = ref({
   x: window.innerWidth / 2,
@@ -48,6 +36,11 @@ const updatePosition = (id: string, _position: { x: number; y: number }) => {
 };
 
 onMounted(() => {
+  const circle = scene.add.circle(400, 300, 50, 0xff0000); // x, y, radius, color
+
+  // Enable physics for the circle
+  scene.physics.add.existing(circle);
+
   playerManager.host.value.on("mousePositionDelta", updatePosition);
 });
 

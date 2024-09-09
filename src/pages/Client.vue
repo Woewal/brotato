@@ -1,11 +1,10 @@
-<template><div ref="game-parent"></div></template>
+<template>{{ ping }}</template>
 
 <script setup lang="ts">
 import { ref, useTemplateRef } from "vue";
 import { createClient } from "../lib/peer";
 import { throttle } from "../lib/throttle";
 import { useRouteParams } from "@vueuse/router";
-import useGame from "../lib/game";
 
 const id = useRouteParams("id");
 const { send, on } = createClient(id.value as string);
@@ -16,10 +15,6 @@ const currentPosition = ref({ x: 0, y: 0 });
 function normalizeAlpha(alpha: number): number {
   return alpha < 0 ? 360 + alpha : alpha % 360;
 }
-
-const gameParent = useTemplateRef("game-parent");
-
-useGame({ element: gameParent.value });
 
 // Function to normalize beta values to the range [-90, 90]
 function normalizeBeta(beta: number): number {

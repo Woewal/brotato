@@ -1,24 +1,19 @@
 <template>
-  <div>
+  <!-- <div>
     Players connected: {{ playerManager.connectedPlayers.value.size }}, room id:
     {{ roomId }}
-  </div>
-
-  <PlayerCursor
-    v-for="player in playerManager.connectedPlayers.value"
-    :id="player"
-  />
+  </div> -->
+  <Game />
 </template>
 
 <script setup lang="ts">
 import { createHost } from "../lib/peer";
-import PlayerCursor from "../components/PlayerCursor.vue";
 import { providePlayers } from "../context/players";
+import Game from "../components/Game.vue";
 
 const playerManager = providePlayers();
 
 const host = createHost();
-const { roomId } = host;
 
 host.on("connect", (id) => playerManager.addPlayer(id));
 host.on("disconnect", (id) => playerManager.removePlayer(id));
