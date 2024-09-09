@@ -2,7 +2,7 @@ import { ref } from "vue";
 import defineContext from "../lib/context";
 import { createHost } from "../lib/peer";
 
-const [injectPlayers, providePlayers] = defineContext(() => {
+const [injectConnectionManager, useConnectionManager] = defineContext(() => {
   const connectedPlayers = ref<Set<string>>(new Set());
 
   const host = ref<ReturnType<typeof createHost>>();
@@ -15,7 +15,15 @@ const [injectPlayers, providePlayers] = defineContext(() => {
     connectedPlayers.value.delete(id);
   };
 
-  return { connectedPlayers, addPlayer, removePlayer, host };
+  return {
+    connectedPlayers,
+    addPlayer,
+    removePlayer,
+    host,
+  };
 });
 
-export { injectPlayers, providePlayers };
+export {
+  injectConnectionManager as injectPlayers,
+  useConnectionManager as providePlayers,
+};

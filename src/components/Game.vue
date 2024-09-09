@@ -7,13 +7,14 @@
   />
   <slot></slot>
   <div class="fixed bottom-3 left-3 bg-white p-3 rounded-sm">
-    Join now, {{ playerManager.connectedPlayers.value.size }} players connected
+    Join now <strong>{{ playerManager.host.value.roomId }}</strong
+    >, {{ playerManager.connectedPlayers.value.size }} players connected
   </div>
 </template>
 
 <script setup lang="ts">
 import { useTemplateRef } from "vue";
-import { injectPlayers } from "../context/players";
+import { injectPlayers } from "../context/connection";
 import { provideGame } from "../context/game";
 import PlayerCursor from "./PlayerCursor.vue";
 
