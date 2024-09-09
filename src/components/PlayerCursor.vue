@@ -5,7 +5,7 @@ import { useGame } from "../context/game";
 
 const playerManager = injectPlayers();
 
-const { scene } = useGame();
+const game = useGame();
 
 const position = ref({
   x: window.innerWidth / 2,
@@ -23,23 +23,32 @@ const minMax = (value: number, min: number, max: number) => {
 const updatePosition = (id: string, _position: { x: number; y: number }) => {
   if (id != props.id) return;
 
-  position.value = (() => {
-    const previous = position.value;
+  const { x, y } = circle;
 
-    const newValue = {
-      x: minMax(previous.x - _position.x * 30, 0, window.innerWidth),
-      y: minMax(previous.y - _position.y * 30, 0, window.innerHeight),
-    };
+  console.log("updating pos");
 
-    return newValue;
-  })();
+  circle.setPosition(x + _position.x, y + _position.y);
+
+  // position.value = (() => {
+  //   const previous = position.value;
+
+  //   const newValue = {
+  //     x: minMax(previous.x - _position.x * 30, 0, window.innerWidth),
+  //     y: minMax(previous.y - _position.y * 30, 0, window.innerHeight),
+  //   };
+
+  //   return newValue;
+  // })();
 };
 
-onMounted(() => {
-  const circle = scene.add.circle(400, 300, 50, 0xff0000); // x, y, radius, color
+let circle: ReturnType<typeof game.scene.value.add.circle>;
 
-  // Enable physics for the circle
-  scene.physics.add.existing(circle);
+onMounted(() => {
+  console.log(game);
+
+  let scene = game.scene.value;
+
+  circle = scene.add.circle(400, 300, 50, 0xff0000); // x, y, radius, color
 
   playerManager.host.value.on("mousePositionDelta", updatePosition);
 });

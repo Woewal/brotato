@@ -35,7 +35,45 @@ export const createHost = () => {
     }
   >();
 
-  eventListener.on("mousePositionDelta", (id, string) => {});
+  const addDevPlayer = () => {
+    eventListener.invoke("connect", "dev");
+
+    const updateInputs = () => {
+      document.addEventListener("keydown", (event) => {
+        let horizontal = 0;
+        let vertical = 0;
+        switch (event.code) {
+          case "KeyW":
+            vertical = -1;
+            // Add logic for W key
+            break;
+          case "KeyA":
+            horizontal = -1;
+            // Add logic for A key
+            break;
+          case "KeyS":
+            vertical = 1;
+            // Add logic for S key
+            break;
+          case "KeyD":
+            horizontal = 1;
+            // Add logic for D key
+            break;
+        }
+
+        eventListener.invoke("mousePositionDelta", "dev", {
+          x: horizontal,
+          y: vertical,
+        }); //add deltatime
+      });
+      requestAnimationFrame(updateInputs);
+    };
+    updateInputs();
+  };
+
+  setTimeout(() => {
+    addDevPlayer();
+  }, 1000);
 
   peer.on("connection", (conn) => {
     connections.value.add(conn);

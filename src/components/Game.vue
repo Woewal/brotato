@@ -1,10 +1,14 @@
 <template>
   <div ref="game-parent"></div>
   <PlayerCursor
+    v-if="loaded"
     v-for="player in playerManager.connectedPlayers.value"
     :id="player"
   />
   <slot></slot>
+  <div class="fixed bottom-3 left-3 bg-white p-3 rounded-sm">
+    Join now, {{ playerManager.connectedPlayers.value.size }} players connected
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -17,5 +21,5 @@ const playerManager = injectPlayers();
 
 const gameParent = useTemplateRef("game-parent");
 
-provideGame({ element: gameParent });
+const { loaded } = provideGame({ element: gameParent });
 </script>

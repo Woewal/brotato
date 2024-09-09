@@ -1,4 +1,4 @@
-import { onMounted, Ref } from "vue";
+import { onMounted, ref, Ref } from "vue";
 import defineContext from "../lib/context";
 import * as Phaser from "phaser";
 
@@ -6,7 +6,10 @@ const [useGame, provideGame] = defineContext(
   (config: { element: Ref<HTMLDivElement> }) => {
     class MainScene extends Phaser.Scene {}
 
-    let game: Phaser.Game;
+    let game = ref<Phaser.Game>();
+    let scene = ref<Phaser.Scene>();
+
+    const loaded = ref(false);
 
     onMounted(() => {
       const gameConfig = {
@@ -17,10 +20,18 @@ const [useGame, provideGame] = defineContext(
         scene: MainScene,
       };
 
-      game = new Phaser.Game(gameConfig);
+      const _game = new Phaser.Game(gameConfig);
+
+      _game.events.once("ready", () => {
+        const _scene = _game.scene.scenes[0];
+        game.value = _game;
+        scene.value = _scene;
+
+        loaded.value = true;
+      });
     });
 
-    return { game, scene: game.scene.getScene("MainScene") };
+    return { game, scene, loaded };
   }
 );
 
