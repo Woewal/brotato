@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { injectPlayers } from "../context/connection";
 import { useGame } from "../context/game";
+import useGameObject from "../composables/useGameObject";
 
 const playerManager = injectPlayers();
 
@@ -27,7 +28,7 @@ const updatePosition = (id: string, _position: { x: number; y: number }) => {
 
   console.log("updating pos");
 
-  circle.setPosition(x + _position.x * 30, y + _position.y * 30);
+  circle.setPosition(x - _position.x * 30, y - _position.y * 30);
 
   // position.value = (() => {
   //   const previous = position.value;
@@ -43,12 +44,18 @@ const updatePosition = (id: string, _position: { x: number; y: number }) => {
 
 let circle: ReturnType<typeof game.scene.value.add.circle>;
 
+useGameObject({
+  factory: (factory, scene) => {
+    circle = factory.arc(500, 500, 10, 0, 360, undefined, 0x00ffff);
+
+    scene.add.existing(circle);
+
+    return circle;
+  },
+});
+
 onMounted(() => {
   console.log(game);
-
-  let scene = game.scene.value;
-
-  circle = scene.add.circle(400, 300, 10, 0xff0000); // x, y, radius, color
 
   playerManager.host.value.on("mousePositionDelta", updatePosition);
 });

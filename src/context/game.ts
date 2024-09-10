@@ -12,12 +12,13 @@ const [useGame, provideGame] = defineContext(
     const loaded = ref(false);
 
     onMounted(() => {
-      const gameConfig = {
+      const gameConfig: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
         width: window.innerWidth,
         height: window.innerHeight,
         parent: config.element.value,
         scene: MainScene,
+        physics: { default: "arcade" },
       };
 
       const _game = new Phaser.Game(gameConfig);
