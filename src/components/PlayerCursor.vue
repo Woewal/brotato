@@ -13,6 +13,9 @@ const position = ref({
   y: window.innerHeight / 2,
 });
 
+// Track last orientation for delta calculation
+const lastOrientation = ref<{ yaw: number; pitch: number } | null>(null);
+
 const props = defineProps<{ id: string }>();
 
 const minMax = (value: number, min: number, max: number) => {
@@ -21,25 +24,42 @@ const minMax = (value: number, min: number, max: number) => {
   return value;
 };
 
-const updatePosition = (id: string, _position: { x: number; y: number }) => {
+const sensitivity = 10; // Adjust this value for more/less sensitivity
+
+function getYawDelta(prev: number, next: number) {
+  let delta = prev - next;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  return delta;
+}
+
+const updatePosition = (
+  id: string,
+  _orientation: { yaw: number; pitch: number }
+) => {
   if (id != props.id) return;
 
-  const { x, y } = circle;
+  if (!lastOrientation.value) {
+    lastOrientation.value = {
+      yaw: _orientation.yaw,
+      pitch: _orientation.pitch,
+    };
+    return;
+  }
 
-  console.log("updating pos");
+  // Flip yaw direction and handle wrapping
+  const dyaw =
+    getYawDelta(lastOrientation.value.yaw, _orientation.yaw) * sensitivity;
+  // Flip pitch direction
+  const dpitch =
+    (lastOrientation.value.pitch - _orientation.pitch) * sensitivity;
 
-  circle.setPosition(x - _position.x * 30, y - _position.y * 30);
+  position.value.x = minMax(position.value.x + dyaw, 0, window.innerWidth);
+  position.value.y = minMax(position.value.y + dpitch, 0, window.innerHeight);
 
-  // position.value = (() => {
-  //   const previous = position.value;
+  circle.setPosition(position.value.x, position.value.y);
 
-  //   const newValue = {
-  //     x: minMax(previous.x - _position.x * 30, 0, window.innerWidth),
-  //     y: minMax(previous.y - _position.y * 30, 0, window.innerHeight),
-  //   };
-
-  //   return newValue;
-  // })();
+  lastOrientation.value = { yaw: _orientation.yaw, pitch: _orientation.pitch };
 };
 
 let circle: ReturnType<typeof game.scene.value.add.circle>;
@@ -57,10 +77,10 @@ useGameObject({
 onMounted(() => {
   console.log(game);
 
-  playerManager.host.value.on("mousePositionDelta", updatePosition);
+  playerManager.host.value.on("mouseOrientation", updatePosition);
 });
 
 onUnmounted(() => {
-  playerManager.host.value.off("mousePositionDelta", updatePosition);
+  playerManager.host.value.off("mouseOrientation", updatePosition);
 });
 </script>

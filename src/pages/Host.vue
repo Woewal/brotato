@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import { createHost } from "../lib/peer";
+import { createHost } from "../lib/peerHost";
 import { providePlayers } from "../context/connection";
 import Game from "../components/Game.vue";
 
