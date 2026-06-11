@@ -8,12 +8,14 @@ const playerManager = injectPlayers();
 
 const game = useGame();
 
-const position = ref({
+const props = defineProps<{ id: string }>();
+
+const targetPosition = ref({
   x: window.innerWidth / 2,
   y: window.innerHeight / 2,
 });
 
-const props = defineProps<{ id: string }>();
+const ease = 0.15;
 
 const minMax = (value: number, min: number, max: number) => {
   if (value < min) return min;
@@ -21,28 +23,18 @@ const minMax = (value: number, min: number, max: number) => {
   return value;
 };
 
+const lerp = (start: number, end: number, t: number) => start + (end - start) * t;
+
 const updatePosition = (id: string, _position: { x: number; y: number }) => {
   if (id != props.id) return;
 
-  const { x, y } = circle;
-
-  console.log("updating pos");
-
-  circle.setPosition(x - _position.x * 30, y - _position.y * 30);
-
-  // position.value = (() => {
-  //   const previous = position.value;
-
-  //   const newValue = {
-  //     x: minMax(previous.x - _position.x * 30, 0, window.innerWidth),
-  //     y: minMax(previous.y - _position.y * 30, 0, window.innerHeight),
-  //   };
-
-  //   return newValue;
-  // })();
+  targetPosition.value = {
+    x: minMax(circle.x - _position.x * 30, 0, window.innerWidth),
+    y: minMax(circle.y - _position.y * 30, 0, window.innerHeight),
+  };
 };
 
-let circle: ReturnType<typeof game.scene.value.add.circle>;
+let circle: any;
 
 useGameObject({
   factory: (factory, scene) => {
@@ -50,13 +42,20 @@ useGameObject({
 
     scene.physics.add.existing(circle);
 
+    scene.events.on("update", () => {
+      if (!circle) return;
+
+      const x = lerp(circle.x, targetPosition.value.x, ease);
+      const y = lerp(circle.y, targetPosition.value.y, ease);
+
+      circle.setPosition(x, y);
+    });
+
     return circle;
   },
 });
 
 onMounted(() => {
-  console.log(game);
-
   playerManager.host.value!.on("mousePositionDelta", updatePosition);
 });
 
