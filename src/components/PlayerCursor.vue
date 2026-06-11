@@ -8,9 +8,7 @@ const playerManager = injectPlayers();
 
 const game = useGame();
 
-const props = defineProps<{ id: string }>();
-
-const targetPosition = ref({
+const position = ref({
   x: window.innerWidth / 2,
   y: window.innerHeight / 2,
 });
@@ -64,22 +62,13 @@ const updatePosition = (
   lastOrientation.value = { yaw: _orientation.yaw, pitch: _orientation.pitch };
 };
 
-let circle: any;
+let circle: ReturnType<typeof game.scene.value.add.circle>;
 
 useGameObject({
   factory: (factory, scene) => {
     circle = factory.arc(500, 500, 10, 0, 360, undefined, 0x00ffff);
 
-    scene.physics.add.existing(circle);
-
-    scene.events.on("update", () => {
-      if (!circle) return;
-
-      const x = lerp(circle.x, targetPosition.value.x, ease);
-      const y = lerp(circle.y, targetPosition.value.y, ease);
-
-      circle.setPosition(x, y);
-    });
+    scene.add.existing(circle);
 
     return circle;
   },
