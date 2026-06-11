@@ -1,56 +1,51 @@
-<template>{{ ping }}</template>
+<template>
+  {{ ping }}
+</template>
 
 <script setup lang="ts">
-import { ref, useTemplateRef } from "vue";
-import { createClient } from "../lib/peer";
-import { throttle } from "../lib/throttle";
+import { ref, watch } from "vue";
+import { useDeviceOrientation } from "@vueuse/core";
 import { useRouteParams } from "@vueuse/router";
+import { throttle } from "../lib/throttle";
+import { createClient } from "../lib/peerClient";
 
 const id = useRouteParams("id");
 const { send, on } = createClient(id.value as string);
 
-const currentPosition = ref({ x: 0, y: 0 });
-
-// Function to normalize alpha values to the range [0, 360)
-function normalizeAlpha(alpha: number): number {
-  return alpha < 0 ? 360 + alpha : alpha % 360;
-}
-
-// Function to normalize beta values to the range [-90, 90]
-function normalizeBeta(beta: number): number {
-  return Math.max(-90, Math.min(90, beta));
-}
-
-const handleOrientation = throttle((event: DeviceOrientationEvent) => {
-  const alpha = event.alpha || 0; // Use a default value if alpha is undefined
-  const beta = event.beta || 0; // Use a default value if beta is undefined
-
-  const newPosition = {
-    x: normalizeAlpha(alpha),
-    y: normalizeBeta(beta),
-  };
-
-  const { x: currentX, y: currentY } = currentPosition.value;
-
-  const deltaPosition = {
-    x: -(currentX - newPosition.x) * 2,
-    y: -(currentY - newPosition.y) * 2,
-  };
-
-  send("mousePositionDelta", deltaPosition);
-
-  currentPosition.value = newPosition;
-}, 16.67);
-
-window.addEventListener("deviceorientation", handleOrientation);
-
 const ping = ref(0);
-
 on("ping", (dateNumber) => {
-  ping.value = Math.abs(dateNumber - new Date().getTime());
+  ping.value = Math.abs(dateNumber - Date.now());
 });
 
-// onCleanup(() => {
-//   window.addEventListener("deviceorientation", handleOrientation);
-// });
+// --- Device orientation ---
+const { alpha, beta } = useDeviceOrientation();
+
+const currentPosition = ref({
+  x: 0,
+  y: 0,
+});
+
+// Normalize helpers
+function normalizeAlpha(a: number) {
+  return (a + 360) % 360;
+}
+
+function normalizeBeta(b: number) {
+  return Math.max(-90, Math.min(90, b));
+}
+
+// Throttled sender
+const sendOrientation = throttle((yaw: number, pitch: number) => {
+  send("mouseOrientation", { yaw, pitch });
+}, 16.67);
+
+// Watch orientation changes
+watch([alpha, beta], ([a, b]) => {
+  if (a == null || b == null) return;
+
+  const yaw = normalizeAlpha(a);
+  const pitch = normalizeBeta(b);
+
+  sendOrientation(yaw, pitch);
+});
 </script>
