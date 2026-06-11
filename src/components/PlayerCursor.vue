@@ -48,7 +48,7 @@ useGameObject({
   factory: (factory, scene) => {
     circle = factory.arc(500, 500, 10, 0, 360, undefined, 0x00ffff);
 
-    scene.add.existing(circle);
+    scene.physics.add.existing(circle);
 
     return circle;
   },
@@ -57,10 +57,10 @@ useGameObject({
 onMounted(() => {
   console.log(game);
 
-  playerManager.host.value.on("mousePositionDelta", updatePosition);
+  playerManager.host.value!.on("mousePositionDelta", updatePosition);
 });
 
 onUnmounted(() => {
-  playerManager.host.value.off("mousePositionDelta", updatePosition);
+  playerManager.host.value!.off("mousePositionDelta", updatePosition);
 });
 </script>
