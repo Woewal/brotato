@@ -7,7 +7,10 @@
       >
         ↑
       </div>
-      <span>{{ statusMessage }}</span>
+      <div class="flex flex-col">
+        <span>{{ statusMessage }}</span>
+        <span class="text-xs opacity-70">{{ berlinStatusMessage }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -94,8 +97,11 @@ function rotateVectorByQuaternion(
   };
 }
 
-function quaternionFromDirection(direction: Vector3): Quaternion {
-  const forward = { x: 0, y: 0, z: 1 };
+function quaternionFromDirection(
+  direction: Vector3,
+  referenceVector: Vector3 = { x: 0, y: 1, z: 0 },
+): Quaternion {
+  const forward = referenceVector;
   const target = normalizeVector(direction);
   const axis = cross(forward, target);
   const cosine = Math.max(-1, Math.min(1, dot(forward, target)));
@@ -194,6 +200,28 @@ function getSunDirection(
   };
 }
 
+function getDirectionToBerlin(latitude: number, longitude: number): Vector3 {
+  const berlinLatitude = 52.52;
+  const berlinLongitude = 13.405;
+
+  const phi1 = toRadians(latitude);
+  const phi2 = toRadians(berlinLatitude);
+  const deltaLambda = toRadians(berlinLongitude - longitude);
+
+  const y = Math.sin(deltaLambda) * Math.cos(phi2);
+  const x =
+    Math.cos(phi1) * Math.sin(phi2) -
+    Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+  const bearing = (toDegrees(Math.atan2(y, x)) + 360) % 360;
+  const bearingRad = toRadians(bearing);
+
+  return {
+    x: Math.sin(bearingRad),
+    y: Math.cos(bearingRad),
+    z: 0,
+  };
+}
+
 const sunQuaternion = computed<Quaternion | null>(() => {
   if (!geolocation.value) return null;
 
@@ -203,7 +231,7 @@ const sunQuaternion = computed<Quaternion | null>(() => {
     new Date(),
   );
 
-  return quaternionFromDirection(direction);
+  return quaternionFromDirection(direction, { x: 0, y: 1, z: 0 });
 });
 
 const pointingState = computed(() => {
@@ -212,14 +240,47 @@ const pointingState = computed(() => {
   }
 
   const deviceDirection = rotateVectorByQuaternion(
-    { x: 0, y: 0, z: 1 },
+    { x: 0, y: 1, z: 0 },
     orientation.value,
   );
   const sunDirection = rotateVectorByQuaternion(
-    { x: 0, y: 0, z: 1 },
+    { x: 0, y: 1, z: 0 },
     sunQuaternion.value,
   );
   const cosine = Math.max(-1, Math.min(1, dot(deviceDirection, sunDirection)));
+  const errorDegrees = toDegrees(Math.acos(cosine));
+
+  return {
+    pointing: errorDegrees <= allowedErrorDegrees,
+    errorDegrees,
+  };
+});
+
+const berlinQuaternion = computed<Quaternion | null>(() => {
+  if (!geolocation.value) return null;
+
+  const direction = getDirectionToBerlin(
+    geolocation.value.latitude,
+    geolocation.value.longitude,
+  );
+
+  return quaternionFromDirection(direction, { x: 0, y: 1, z: 0 });
+});
+
+const berlinPointingState = computed(() => {
+  if (!orientation.value || !berlinQuaternion.value) {
+    return { pointing: false, errorDegrees: Number.POSITIVE_INFINITY };
+  }
+
+  const deviceDirection = rotateVectorByQuaternion(
+    { x: 0, y: 1, z: 0 },
+    orientation.value,
+  );
+  const berlinDirection = rotateVectorByQuaternion(
+    { x: 0, y: 1, z: 0 },
+    berlinQuaternion.value,
+  );
+  const cosine = Math.max(-1, Math.min(1, dot(deviceDirection, berlinDirection)));
   const errorDegrees = toDegrees(Math.acos(cosine));
 
   return {
@@ -234,6 +295,14 @@ const statusMessage = computed(() => {
   }
 
   return `Pointing to sun: ${pointingState.value.pointing ? "true" : "false"} (${pointingState.value.errorDegrees.toFixed(1)}° error, allowed ${allowedErrorDegrees}°)`;
+});
+
+const berlinStatusMessage = computed(() => {
+  if (!orientation.value || !berlinQuaternion.value) {
+    return "Pointing to Berlin: false";
+  }
+
+  return `Pointing to Berlin: ${berlinPointingState.value.pointing ? "true" : "false"} (${berlinPointingState.value.errorDegrees.toFixed(1)}° error, allowed ${allowedErrorDegrees}°)`;
 });
 
 const rotationStyle = computed(() => {
