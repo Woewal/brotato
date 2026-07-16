@@ -3,41 +3,32 @@ import {
   generateHostHelpers,
 } from "peer-host-multiplayer/index";
 
-export type Quaternion = {
-  x: number;
-  y: number;
-  z: number;
-  w: number;
-};
-
 export type OrientationPayload = {
-  yaw: number;
-  pitch: number;
-  quaternion: Quaternion;
+  heading: number;
 };
 
-type ClientMessages = {
-  orientation: [orientation: OrientationPayload];
-  chat: [message: string];
+export type HostToClientMessages = {
+  ping: [amount: number];
 };
 
-type HostMessages = {
-  ping: [dateNumber: number];
+export type ClientToHostMessages = {
+  mouseOrientation: [orientation: OrientationPayload];
 };
 
-const { createHost, createLocalClient, useEvent, useHost } =
-  generateHostHelpers<HostMessages, ClientMessages>();
+const { createHost, createLocalClient, useEvent: useHostEvent, useHost } =
+  generateHostHelpers<HostToClientMessages, ClientToHostMessages>();
 
-const { createClient, useClient } = generateClientHelpers<
-  HostMessages,
-  ClientMessages
+const { createClient, useClient, useEvent: useClientEvent } = generateClientHelpers<
+  HostToClientMessages,
+  ClientToHostMessages
 >();
 
 export {
   createHost,
   createClient,
   createLocalClient,
-  useEvent,
+  useHostEvent,
   useHost,
   useClient,
+  useClientEvent,
 };

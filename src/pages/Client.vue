@@ -16,7 +16,7 @@ import { ref, watch } from "vue";
 import { useDeviceOrientation } from "@vueuse/core";
 import { useRouteParams } from "@vueuse/router";
 import { throttle } from "../lib/throttle";
-import { createClient } from "../lib/peerClient";
+import { createClient } from "../lib/peer";
 
 const id = useRouteParams("id");
 const client = createClient(id.value as string) as {
@@ -45,7 +45,7 @@ function normalizeAlpha(a: number) {
 // Throttled sender
 const sendOrientation = throttle(
   (heading: number) => {
-    send("mouseOrientation", { heading });
+    send("compassHeading", { heading });
   },
   16.67,
 );

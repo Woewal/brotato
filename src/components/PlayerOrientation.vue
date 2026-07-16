@@ -22,7 +22,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useGeolocation } from "@vueuse/core";
-import { useHost } from "../lib/peerHost";
+import { useHost } from "../lib/peer";
 import {
   comparePositionToTargets,
   getTargetPointingStates,
@@ -106,7 +106,7 @@ const targetStatusMessages = computed(() => {
   });
 });
 
-on("mouseOrientation", (id, payload) => {
+on("compassHeading", (id, payload) => {
   if (id !== props.id || !payload) return;
 
   if (isFiniteNumber(payload.heading)) {

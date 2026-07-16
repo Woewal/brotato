@@ -1,14 +1,7 @@
-import { generateHostHelpers } from "peer-host-multiplayer";
-import { ClientToHostMessages } from "./peerClient";
-
-export type HostToClientMessages = {
-  ping: [amount: number];
-};
-
-export const {
+export {
   createHost,
   createLocalClient,
-  useClientMessage,
-  useEvent,
+  useHostEvent as useEvent,
   useHost,
-} = generateHostHelpers<HostToClientMessages, ClientToHostMessages>();
+} from "./peer";
+export type { HostToClientMessages } from "./peer";
