@@ -42,6 +42,16 @@ function sanitizeNumber(value: number) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function getHeadingDirectionVector(headingDegrees: number) {
+  const headingRadians = toRadians(headingDegrees);
+
+  return {
+    x: Math.sin(headingRadians),
+    y: Math.cos(headingRadians),
+    z: 0,
+  };
+}
+
 function sanitizeVector(vector: { x: number; y: number; z: number }) {
   return {
     x: sanitizeNumber(vector.x),
@@ -69,9 +79,14 @@ export function getHeadingErrorDegrees(
     return Number.POSITIVE_INFINITY;
   }
 
-  const delta = Math.abs(deviceHeading - targetHeading);
+  const targetVector = getHeadingDirectionVector(targetHeading);
+  const deviceVector = getHeadingDirectionVector(deviceHeading);
+  const dotProduct = targetVector.x * deviceVector.x + targetVector.y * deviceVector.y;
+  const crossProduct = targetVector.x * deviceVector.y - targetVector.y * deviceVector.x;
+  const rawAngle = toDegrees(Math.atan2(crossProduct, dotProduct));
+  const roundedAngle = Number(Math.abs(rawAngle).toFixed(6));
 
-  return Math.min(delta, 360 - delta);
+  return roundedAngle;
 }
 
 export function getHeadingFromVector(vector: { x: number; y: number; z: number }) {

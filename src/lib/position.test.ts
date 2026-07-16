@@ -42,6 +42,23 @@ describe("createPositionComparer", () => {
     expect(states[0].errorDegrees).toBe(1);
   });
 
+  it("returns distinct heading errors for different target cities from the same position", () => {
+    const comparisons = comparePositionToTargets(
+      { latitude: 52.3676, longitude: 4.9041 },
+      [
+        { name: "Berlin", latitude: 52.52, longitude: 13.405 },
+        { name: "Amsterdam", latitude: 52.3676, longitude: 4.9041 },
+        { name: "New York", latitude: 40.7128, longitude: -74.006 },
+      ],
+    );
+
+    const states = getTargetPointingStates(comparisons, 0, 10);
+
+    expect(states[0].errorDegrees).not.toBe(states[1].errorDegrees);
+    expect(states[0].errorDegrees).not.toBe(states[2].errorDegrees);
+    expect(states[1].errorDegrees).not.toBe(states[2].errorDegrees);
+  });
+
   it("returns zero distance and zero bearing for the same position", () => {
     const compare = createPositionComparer({ latitude: 52.52, longitude: 13.405 });
 
