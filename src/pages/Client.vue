@@ -38,6 +38,10 @@ const currentPosition = ref({
   y: 0,
 });
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 // Normalize helpers
 function normalizeAlpha(a: number) {
   return (a + 360) % 360;
@@ -85,7 +89,7 @@ const sendOrientation = throttle(
 
 // Watch orientation changes
 watch([alpha, beta, gamma], ([a, b, g]) => {
-  if (a == null || b == null || g == null) return;
+  if (!isFiniteNumber(a) || !isFiniteNumber(b) || !isFiniteNumber(g)) return;
 
   const yaw = normalizeAlpha(a);
   const pitch = normalizeBeta(b);
