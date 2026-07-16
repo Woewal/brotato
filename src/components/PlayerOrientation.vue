@@ -34,6 +34,54 @@ const allowedErrorDegrees = 10;
 
 type Vector3 = { x: number; y: number; z: number };
 
+function isFiniteVector(vector: Vector3): boolean {
+  return [vector.x, vector.y, vector.z].every(Number.isFinite);
+}
+
+function getFiniteErrorDegrees(cosine: number): number {
+  if (!Number.isFinite(cosine)) {
+    return 180;
+  }
+
+  const clampedCosine = Math.max(-1, Math.min(1, cosine));
+  return toDegrees(Math.acos(clampedCosine));
+}
+
+function getHeadingFromVector(vector: Vector3): number {
+  const horizontalDirection = normalizeVector({
+    x: vector.x,
+    y: vector.y,
+    z: 0,
+  });
+  const headingRad = Math.atan2(horizontalDirection.x, horizontalDirection.y);
+
+  return (toDegrees(headingRad) + 360) % 360;
+}
+
+function getHeadingErrorDegrees(targetVector: Vector3, quaternion: Quaternion) {
+  const deviceDirection = rotateVectorByQuaternion(
+    { x: 0, y: 1, z: 0 },
+    quaternion,
+  );
+  const deviceHeading = getHeadingFromVector(deviceDirection);
+  const targetHeading = getHeadingFromVector(targetVector);
+  const delta = Math.abs(deviceHeading - targetHeading);
+
+  return Math.min(delta, 360 - delta);
+}
+
+function getVectorErrorDegrees(targetVector: Vector3, quaternion: Quaternion) {
+  const deviceDirection = rotateVectorByQuaternion(
+    { x: 0, y: 1, z: 0 },
+    quaternion,
+  );
+  const normalizedDeviceDirection = normalizeVector(deviceDirection);
+  const normalizedTargetVector = normalizeVector(targetVector);
+  const cosine = dot(normalizedDeviceDirection, normalizedTargetVector);
+
+  return getFiniteErrorDegrees(cosine);
+}
+
 watch(
   coords,
   (value) => {
@@ -56,19 +104,29 @@ function toDegrees(radians: number) {
 }
 
 function normalizeVector(vector: Vector3): Vector3 {
-  const length = Math.hypot(vector.x, vector.y, vector.z) || 1;
+  const length = Math.hypot(vector.x, vector.y, vector.z);
+  const safeLength = Number.isFinite(length) && length > 0 ? length : 1;
+
   return {
-    x: vector.x / length,
-    y: vector.y / length,
-    z: vector.z / length,
+    x: vector.x / safeLength,
+    y: vector.y / safeLength,
+    z: vector.z / safeLength,
   };
 }
 
 function dot(a: Vector3, b: Vector3) {
+  if (!isFiniteVector(a) || !isFiniteVector(b)) {
+    return Number.NaN;
+  }
+
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
 function cross(a: Vector3, b: Vector3): Vector3 {
+  if (!isFiniteVector(a) || !isFiniteVector(b)) {
+    return { x: 0, y: 0, z: 0 };
+  }
+
   return {
     x: a.y * b.z - a.z * b.y,
     y: a.z * b.x - a.x * b.z,
@@ -80,6 +138,15 @@ function rotateVectorByQuaternion(
   vector: Vector3,
   quaternion: Quaternion,
 ): Vector3 {
+  if (
+    !quaternion ||
+    ![quaternion.x, quaternion.y, quaternion.z, quaternion.w].every(
+      Number.isFinite,
+    )
+  ) {
+    return vector;
+  }
+
   const { x, y, z, w } = quaternion;
   const vx = vector.x;
   const vy = vector.y;
@@ -101,7 +168,7 @@ function quaternionFromDirection(
   direction: Vector3,
   referenceVector: Vector3 = { x: 0, y: 1, z: 0 },
 ): Quaternion {
-  const forward = referenceVector;
+  const forward = normalizeVector(referenceVector);
   const target = normalizeVector(direction);
   const axis = cross(forward, target);
   const cosine = Math.max(-1, Math.min(1, dot(forward, target)));
@@ -222,33 +289,25 @@ function getDirectionToBerlin(latitude: number, longitude: number): Vector3 {
   };
 }
 
-const sunQuaternion = computed<Quaternion | null>(() => {
+const sunDirection = computed<Vector3 | null>(() => {
   if (!geolocation.value) return null;
 
-  const direction = getSunDirection(
+  return getSunDirection(
     geolocation.value.latitude,
     geolocation.value.longitude,
     new Date(),
   );
-
-  return quaternionFromDirection(direction, { x: 0, y: 1, z: 0 });
 });
 
 const pointingState = computed(() => {
-  if (!orientation.value || !sunQuaternion.value) {
+  if (!orientation.value || !sunDirection.value) {
     return { pointing: false, errorDegrees: Number.POSITIVE_INFINITY };
   }
 
-  const deviceDirection = rotateVectorByQuaternion(
-    { x: 0, y: 1, z: 0 },
+  const errorDegrees = getVectorErrorDegrees(
+    sunDirection.value,
     orientation.value,
   );
-  const sunDirection = rotateVectorByQuaternion(
-    { x: 0, y: 1, z: 0 },
-    sunQuaternion.value,
-  );
-  const cosine = Math.max(-1, Math.min(1, dot(deviceDirection, sunDirection)));
-  const errorDegrees = toDegrees(Math.acos(cosine));
 
   return {
     pointing: errorDegrees <= allowedErrorDegrees,
@@ -256,32 +315,24 @@ const pointingState = computed(() => {
   };
 });
 
-const berlinQuaternion = computed<Quaternion | null>(() => {
+const berlinDirection = computed<Vector3 | null>(() => {
   if (!geolocation.value) return null;
 
-  const direction = getDirectionToBerlin(
+  return getDirectionToBerlin(
     geolocation.value.latitude,
     geolocation.value.longitude,
   );
-
-  return quaternionFromDirection(direction, { x: 0, y: 1, z: 0 });
 });
 
 const berlinPointingState = computed(() => {
-  if (!orientation.value || !berlinQuaternion.value) {
+  if (!orientation.value || !berlinDirection.value) {
     return { pointing: false, errorDegrees: Number.POSITIVE_INFINITY };
   }
 
-  const deviceDirection = rotateVectorByQuaternion(
-    { x: 0, y: 1, z: 0 },
+  const errorDegrees = getHeadingErrorDegrees(
+    berlinDirection.value,
     orientation.value,
   );
-  const berlinDirection = rotateVectorByQuaternion(
-    { x: 0, y: 1, z: 0 },
-    berlinQuaternion.value,
-  );
-  const cosine = Math.max(-1, Math.min(1, dot(deviceDirection, berlinDirection)));
-  const errorDegrees = toDegrees(Math.acos(cosine));
 
   return {
     pointing: errorDegrees <= allowedErrorDegrees,
@@ -290,7 +341,7 @@ const berlinPointingState = computed(() => {
 });
 
 const statusMessage = computed(() => {
-  if (!orientation.value || !sunQuaternion.value) {
+  if (!orientation.value || !sunDirection.value) {
     return "Pointing to sun: false";
   }
 
@@ -298,7 +349,7 @@ const statusMessage = computed(() => {
 });
 
 const berlinStatusMessage = computed(() => {
-  if (!orientation.value || !berlinQuaternion.value) {
+  if (!orientation.value || !berlinDirection.value) {
     return "Pointing to Berlin: false";
   }
 
